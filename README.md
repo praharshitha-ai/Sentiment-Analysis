@@ -1,6 +1,9 @@
 📊 Sentiment Analysis of Amazon Product Reviews
 📌 Project Overview
 This project focuses on automated sentiment classification of Amazon product reviews. The goal is to build a machine learning system that categorizes reviews into positive, neutral, or negative sentiments, enabling e-commerce platforms to monitor customer feedback in real time.
+
+Working Dashboard Vedio Link - https://youtu.be/Zb4HXzh-gXI
+
 🔑 Business Value
 - Enhanced customer experience monitoring
 - Data-driven product improvement recommendations
