@@ -1,10 +1,3 @@
-#!/usr/bin/env python3
-"""
-SETUP.PY
-Project installation, dependency management, and environment setup
-Run this first to prepare your system
-"""
-
 import os
 import sys
 import subprocess

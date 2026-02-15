@@ -19,24 +19,37 @@ from sklearn.metrics import (
     precision_recall_curve, roc_curve
 )
 
-# Deep Learning
-import tensorflow as tf
-from tensorflow.keras.models import Sequential, Model, save_model, load_model
-from tensorflow.keras.layers import (
-    Embedding, LSTM, GRU, Dense, Dropout, Bidirectional,
-    GlobalMaxPooling1D, GlobalAveragePooling1D, Conv1D, MaxPooling1D,
-    Flatten, BatchNormalization, Attention, MultiHeadAttention,
-    LayerNormalization, Input
-)
-from tensorflow.keras.preprocessing.text import Tokenizer
-from tensorflow.keras.preprocessing.sequence import pad_sequences
-from tensorflow.keras.utils import to_categorical, plot_model
-from tensorflow.keras.callbacks import (
-    EarlyStopping, ModelCheckpoint, ReduceLROnPlateau,
-    TensorBoard, CSVLogger
-)
-from tensorflow.keras.optimizers import Adam, RMSprop
-from tensorflow.keras.regularizers import l2
+# Deep Learning (optional)
+try:
+    import tensorflow as tf
+    from tensorflow.keras.models import Sequential, Model, load_model
+    from tensorflow.keras.layers import (
+        Embedding, LSTM, GRU, Dense, Dropout, Bidirectional,
+        GlobalMaxPooling1D, GlobalAveragePooling1D, Conv1D, MaxPooling1D,
+        Flatten, BatchNormalization, Attention, MultiHeadAttention,
+        LayerNormalization, Input, SpatialDropout1D, Lambda
+    )
+    from tensorflow.keras.preprocessing.text import Tokenizer
+    from tensorflow.keras.preprocessing.sequence import pad_sequences
+    from tensorflow.keras.utils import to_categorical, plot_model
+    from tensorflow.keras.callbacks import (
+        EarlyStopping, ModelCheckpoint, ReduceLROnPlateau,
+        TensorBoard, CSVLogger
+    )
+    from tensorflow.keras.optimizers import Adam, RMSprop
+    from tensorflow.keras.regularizers import l2
+    TF_AVAILABLE = True
+except ImportError:
+    tf = None
+    Sequential = Model = load_model = None
+    Embedding = LSTM = GRU = Dense = Dropout = Bidirectional = None
+    GlobalMaxPooling1D = GlobalAveragePooling1D = Conv1D = MaxPooling1D = None
+    Flatten = BatchNormalization = Attention = MultiHeadAttention = None
+    LayerNormalization = Input = SpatialDropout1D = Lambda = None
+    Tokenizer = pad_sequences = to_categorical = plot_model = None
+    EarlyStopping = ModelCheckpoint = ReduceLROnPlateau = TensorBoard = CSVLogger = None
+    Adam = RMSprop = l2 = None
+    TF_AVAILABLE = False
 
 class BaseModel(ABC):
     """Abstract base class for all models"""
@@ -203,7 +216,7 @@ class TraditionalModels:
         print(f"\n🎓 Training SVM ({kernel} kernel)...")
         
         if kernel == 'linear':
-            model = LinearSVC(C=1.0, max_iter=2000, dual=False)
+            model = SVC(kernel='linear', C=1.0, probability=True)
         else:
             model = SVC(kernel=kernel, C=1.0, probability=True)
         
@@ -340,6 +353,8 @@ class LSTMModel(BaseModel):
     """LSTM Deep Learning Model with advanced architecture options"""
     
     def __init__(self, max_words=10000, max_len=100, embedding_dim=128):
+        if not TF_AVAILABLE:
+            raise ImportError('TensorFlow is required for LSTMModel. Install tensorflow to use this model.')
         self.max_words = max_words
         self.max_len = max_len
         self.embedding_dim = embedding_dim
@@ -713,3 +728,5 @@ if __name__ == "__main__":
     print("  - Gradient Boosting")
     print("  - LSTM (Simple/Bidirectional/CNN-LSTM)")
     print("  - Ensemble")
+
+

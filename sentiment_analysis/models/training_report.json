@@ -1,0 +1,13 @@
+{
+  "dataset": "amazon",
+  "data_path": "C:\\Users\\kotap\\Downloads\\sentiment analysis dataset.zip",
+  "feature_method": "tfidf",
+  "samples": 1176,
+  "best_model": "svm",
+  "timings_seconds": {
+    "naive_bayes": 0.04645800590515137,
+    "logistic_regression": 0.49927449226379395,
+    "svm": 2.148972511291504
+  },
+  "lstm_metrics": null
+}

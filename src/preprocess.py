@@ -1,161 +1,203 @@
 import re
-import string
 import unicodedata
 from collections import Counter
-from typing import List, Dict, Union, Optional
-import warnings
+from typing import Dict, Iterable, Optional
+
+import numpy as np
+import pandas as pd
 
 import nltk
-from nltk.tokenize import word_tokenize, sent_tokenize, TweetTokenizer
-from nltk.corpus import stopwords, wordnet
-from nltk.stem import PorterStemmer, SnowballStemmer, WordNetLemmatizer
-from nltk import pos_tag, ne_chunk
+from nltk.corpus import stopwords
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
+from nltk.stem import PorterStemmer, SnowballStemmer, WordNetLemmatizer
+from nltk.tokenize import TweetTokenizer
 
-# Download required NLTK data
-def download_nltk_data():
-    """Download all required NLTK data packages"""
-    required_packages = [
-        'punkt', 'stopwords', 'wordnet', 'vader_lexicon',
-        'averaged_perceptron_tagger', 'maxent_ne_chunker', 'words'
+
+def download_nltk_data() -> None:
+    """Download required NLTK resources if missing."""
+    resources = [
+        ("tokenizers/punkt", "punkt"),
+        ("corpora/stopwords", "stopwords"),
+        ("corpora/wordnet", "wordnet"),
+        ("sentiment/vader_lexicon", "vader_lexicon"),
     ]
-    
-    for package in required_packages:
+    for path_key, package in resources:
         try:
-            nltk.data.find(f'tokenizers/{package}' if package == 'punkt' else f'corpora/{package}')
+            nltk.data.find(path_key)
         except LookupError:
-            print(f"📥 Downloading {package}...")
             nltk.download(package, quiet=True)
-    
-    print("✅ All NLTK data ready")
+
 
 class TextPreprocessor:
-    """
-    Advanced text preprocessor with multiple cleaning options
-    """
-    
-    def __init__(self, 
-                 lowercase=True,
-                 remove_urls=True,
-                 remove_mentions=True,
-                 remove_hashtags=False,
-                 remove_emojis=False,
-                 remove_punctuation=True,
-                 remove_numbers=False,
-                 remove_stopwords=True,
-                 custom_stopwords=None,
-                 lemmatize=True,
-                 stem=False,
-                 stemmer='wordnet',  # 'porter', 'snowball', 'wordnet'
-                 min_word_length=2,
-                 max_word_length=20,
-                 language='english',
-                 preserve_case_for_emojis=True):
-        
+    """Text preprocessing utility for sentiment tasks."""
+
+    def __init__(
+        self,
+        lowercase: bool = True,
+        remove_urls: bool = True,
+        remove_mentions: bool = True,
+        remove_hashtags: bool = False,
+        remove_emojis: bool = False,
+        remove_punctuation: bool = True,
+        remove_numbers: bool = False,
+        remove_stopwords: bool = False,
+        custom_stopwords: Optional[Iterable[str]] = None,
+        lemmatize: bool = True,
+        stem: bool = False,
+        stemmer: str = "wordnet",
+        min_word_length: int = 2,
+        max_word_length: int = 20,
+        language: str = "english",
+        preserve_case_for_emojis: bool = True,
+    ):
         self.config = {
-            'lowercase': lowercase,
-            'remove_urls': remove_urls,
-            'remove_mentions': remove_mentions,
-            'remove_hashtags': remove_hashtags,
-            'remove_emojis': remove_emojis,
-            'remove_punctuation': remove_punctuation,
-            'remove_numbers': remove_numbers,
-            'remove_stopwords': remove_stopwords,
-            'lemmatize': lemmatize,
-            'stem': stem,
-            'min_word_length': min_word_length,
-            'max_word_length': max_word_length,
-            'language': language
+            "lowercase": lowercase,
+            "remove_urls": remove_urls,
+            "remove_mentions": remove_mentions,
+            "remove_hashtags": remove_hashtags,
+            "remove_emojis": remove_emojis,
+            "remove_punctuation": remove_punctuation,
+            "remove_numbers": remove_numbers,
+            "remove_stopwords": remove_stopwords,
+            "lemmatize": lemmatize,
+            "stem": stem,
+            "min_word_length": min_word_length,
+            "max_word_length": max_word_length,
         }
-        
-        # Initialize tools
+
+        self.url_pattern = re.compile(r"https?://\S+|www\.\S+")
+        self.mention_pattern = re.compile(r"@\w+")
+        self.hashtag_pattern = re.compile(r"#(\w+)")
+        self.emoji_pattern = re.compile(
+            "["
+            "\U0001F600-\U0001F64F"
+            "\U0001F300-\U0001F5FF"
+            "\U0001F680-\U0001F6FF"
+            "\U0001F1E0-\U0001F1FF"
+            "]+",
+            flags=re.UNICODE,
+        )
+
+        self.tweet_tokenizer = TweetTokenizer(
+            preserve_case=not lowercase,
+            reduce_len=True,
+            strip_handles=remove_mentions,
+        )
+
         self.lemmatizer = WordNetLemmatizer()
         self.stemmer = self._get_stemmer(stemmer, language)
-        self.tweet_tokenizer = TweetTokenizer(preserve_case=not lowercase, 
-                                              reduce_len=True, 
-                                              strip_handles=remove_mentions)
-        
-        # Stopwords
-        self.stop_words = set(stopwords.words(language))
+
+        try:
+            self.stop_words = set(stopwords.words(language))
+        except LookupError:
+            download_nltk_data()
+            self.stop_words = set(stopwords.words(language))
+
         if custom_stopwords:
             self.stop_words.update(custom_stopwords)
-        
-        # Add domain-specific stopwords
-        self.domain_stopwords = {
-            'rt', 'via', 'amp', 'http', 'https', 'co', 'www',
-            'com', 'org', 'net', 'io', 'app'
-        }
-        self.stop_words.update(self.domain_stopwords)
-        
-        # Sentiment analyzer (for augmentation)
-        self.sia = SentimentIntensityAnalyzer()
-        
-        # Emoji pattern
-        self.emoji_pattern = re.compile("["
-            u"\U0001F600-\U0001F64F"  # emoticons
-            u"\U0001F300-\U0001F5FF"  # symbols & pictographs
-            u"\U0001F680-\U0001F6FF"  # transport & map symbols
-            u"\U0001F1E0-\U0001F1FF"  # flags
-            u"\U00002702-\U000027B0"
-            u"\U000024C2-\U0001F251"
-            "]+", flags=re.UNICODE)
-        
-        # URL pattern
-        self.url_pattern = re.compile(
-            r'https?://(?:[-\w.]|(?:%[\da-fA-F]{2}))+'
-            r'|www\.(?:[-\w.]|(?:%[\da-fA-F]{2}))+'
-        )
-        
-        # Mention pattern
-        self.mention_pattern = re.compile(r'@\w+')
-        
-        # Hashtag pattern
-        self.hashtag_pattern = re.compile(r'#(\w+)')
-        
-        # Number pattern
-        self.number_pattern = re.compile(r'\d+')
-        
-        print(f"🔧 TextPreprocessor initialized")
-        print(f"   Language: {language}")
-        print(f"   Lemmatization: {lemmatize}")
-        print(f"   Stemming: {stem}")
-        print(f"   Stopwords: {len(self.stop_words)} words")
-    
-    def _get_stemmer(self, stemmer_type, language):
-        """Get appropriate stemmer"""
-        if stemmer_type == 'porter':
+
+        self.stop_words.update({"rt", "via", "amp", "http", "https", "co", "www"})
+
+        try:
+            self.sia = SentimentIntensityAnalyzer()
+        except LookupError:
+            download_nltk_data()
+            self.sia = SentimentIntensityAnalyzer()
+
+    def _get_stemmer(self, stemmer_type: str, language: str):
+        if stemmer_type == "porter":
             return PorterStemmer()
-        elif stemmer_type == 'snowball':
+        if stemmer_type == "snowball":
             return SnowballStemmer(language)
         return None
-    
+
     def clean_text(self, text: str) -> str:
-        """
-        Apply all cleaning steps to text
-        """
-        if not isinstance(text, str):
-            text = str(text)
-        
-        # Normalize unicode
-        text = unicodedata.normalize('NFKD', text)
-        
-        # Remove URLs
-        if self.config['remove_urls']:
-            text = self.url_pattern.sub('', text)
-        
-        # Remove mentions
-        if self.config['remove_mentions']:
-            text = self.mention_pattern.sub('', text)
-        
-        # Handle hashtags
-        if self.config['remove_hashtags']:
-            text = self.hashtag_pattern.sub(r'\1', text)  # Keep word, remove #
+        text = str(text)
+        text = unicodedata.normalize("NFKD", text)
+
+        if self.config["lowercase"]:
+            text = text.lower()
+
+        if self.config["remove_urls"]:
+            text = self.url_pattern.sub(" ", text)
+
+        if self.config["remove_mentions"]:
+            text = self.mention_pattern.sub(" ", text)
+
+        if self.config["remove_hashtags"]:
+            text = self.hashtag_pattern.sub(r"\1", text)
         else:
-            text = text.replace('#', '')  # Just remove # symbol
-        
-        # Remove emojis
-        if self.config['remove_emojis']:
-            text = self.emoji_pattern.sub('', text)
-        
-        # Remove numbers
-       
+            text = text.replace("#", "")
+
+        if self.config["remove_emojis"]:
+            text = self.emoji_pattern.sub(" ", text)
+
+        if self.config["remove_numbers"]:
+            text = re.sub(r"\d+", " ", text)
+
+        if self.config["remove_punctuation"]:
+            text = re.sub(r"[^\w\s]", " ", text)
+
+        text = re.sub(r"\s+", " ", text).strip()
+        return text
+
+    def preprocess(self, text: str) -> str:
+        cleaned = self.clean_text(text)
+        if not cleaned:
+            return ""
+
+        tokens = self.tweet_tokenizer.tokenize(cleaned)
+
+        processed = []
+        for token in tokens:
+            if self.config["remove_stopwords"] and token in self.stop_words:
+                continue
+            if not (self.config["min_word_length"] <= len(token) <= self.config["max_word_length"]):
+                continue
+
+            if self.config["lemmatize"]:
+                token = self.lemmatizer.lemmatize(token)
+            if self.config["stem"] and self.stemmer is not None:
+                token = self.stemmer.stem(token)
+
+            processed.append(token)
+
+        return " ".join(processed)
+
+    def preprocess_dataframe(self, df: pd.DataFrame, text_column: str = "text") -> pd.DataFrame:
+        if text_column not in df.columns:
+            raise ValueError(f"Column '{text_column}' not found in dataframe")
+
+        out = df.copy()
+        out["processed_text"] = out[text_column].fillna("").astype(str).apply(self.preprocess)
+        return out
+
+    def get_sentiment_scores(self, text: str) -> Dict[str, float]:
+        return self.sia.polarity_scores(str(text))
+
+    def get_word_stats(self, df: pd.DataFrame, processed_column: str = "processed_text") -> Dict[str, float]:
+        if processed_column not in df.columns:
+            raise ValueError(f"Column '{processed_column}' not found in dataframe")
+
+        texts = df[processed_column].fillna("").astype(str)
+        tokenized = [t.split() for t in texts]
+
+        total_words = int(sum(len(tokens) for tokens in tokenized))
+        unique_words = int(len(set(word for tokens in tokenized for word in tokens)))
+        avg_words = float(total_words / len(tokenized)) if len(tokenized) else 0.0
+
+        freq = Counter(word for tokens in tokenized for word in tokens)
+
+        return {
+            "total_words": total_words,
+            "unique_words": unique_words,
+            "avg_words_per_text": avg_words,
+            "top_words": freq.most_common(20),
+        }
+
+
+if __name__ == "__main__":
+    sample = "I absolutely LOVE this product!!! https://example.com #awesome"
+    p = TextPreprocessor()
+    print(p.preprocess(sample))
+

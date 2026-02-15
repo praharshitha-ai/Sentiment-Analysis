@@ -26,7 +26,8 @@
 
 ```bash
 # Clone repository
-git clone https://github.com/YOUR_USERNAME/sentiment-analysis.git
+git clone https://github.com/
+praharshitha-ai/sentiment-analysis.git
 cd sentiment-analysis
 
 # Create virtual environment
