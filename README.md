@@ -1,55 +1,53 @@
-📊 Sentiment Analysis of Amazon Product Reviews
-📌 Project Overview
-This project focuses on automated sentiment classification of Amazon product reviews. The goal is to build a machine learning system that categorizes reviews into positive, neutral, or negative sentiments, enabling e-commerce platforms to monitor customer feedback in real time.
+# Sentiment Analysis Dashboard
 
-Working Dashboard Vedio Link - https://youtu.be/Zb4HXzh-gXI
+A Python project for classifying short text as positive, neutral, or negative. It includes text preprocessing, training code for traditional machine-learning models, and a Streamlit dashboard for manual input or CSV uploads.
 
-🔑 Business Value
-- Enhanced customer experience monitoring
-- Data-driven product improvement recommendations
-- Competitive intelligence through sentiment trend analysis
-- Reduced manual review processing costs
+[Watch the dashboard demo](https://youtu.be/Zb4HXzh-gXI)
 
-📂 Dataset
-- Source: Datafiniti Amazon Product Reviews
-- Size: 1,597 reviews → 1,176 after cleaning
-- Features: reviews.text, reviews.rating
-Class Distribution
-- Positive: 83.1% (977 reviews)
-- Neutral: 10.5% (123 reviews)
-- Negative: 6.4% (76 reviews)
+## What the project includes
 
-⚙️ Methods
-Preprocessing Pipeline
-- Text cleaning (remove special chars, HTML, URLs)
-- Tokenization
-- Lemmatization
-- Stopword removal (negations preserved)
-- TF-IDF vectorization (5,000 features, 1–2 grams)
-Models Evaluated
-Naïve Bayes         - Accuracy(82.3%),F1-Score(81.9%)
-Logistic Regression - Accuracy(88.6%),F1-Score(88.7%)
-LSTM (BiLSTM)       - Accuracy(85.2%),F1-Score(84.8%)
+- Text preprocessing and feature extraction, including TF-IDF
+- Training code for Naive Bayes, logistic regression, and SVM, with an optional LSTM path
+- A Streamlit dashboard that accepts typed text or a CSV file and summarizes predictions
+- A saved training report at `sentiment_analysis/models/training_report.json`
 
+The training report records a 1,176-row run and names SVM as the selected model, but it does not include evaluation metrics. The dataset and trained model files are not included in this repository, so this README does not quote accuracy or F1 scores. When model artifacts are absent, the dashboard uses the predictor’s fallback behavior; treat those outputs as a demo, not as evaluated model predictions.
 
-Deep Learning Architecture
-Embedding(128) → BiLSTM(64) → Dense(64) → Softmax
+## Run the dashboard
 
-📈 Results & Insights
-- Best Model: Logistic Regression (88.6% accuracy, 88.7% F1-score)
-- Feature Importance: Positive words like excellent, amazing, great, love, perfect; Negative words like terrible, awful, horrible, waste, disappointed
-- Prediction Confidence: Model outputs confidence scores for uncertainty quantification
+Python 3.10 or 3.11 is recommended for the optional TensorFlow/LSTM path.
 
-⚠️ Limitations
-- Small dataset size (1,176 reviews)
-- Class imbalance (83% positive reviews)
-- Domain specificity (Amazon-only data)
-- Sarcasm detection challenges
+```bash
+python -m venv .venv
+source .venv/bin/activate  # Activate the environment before continuing
+python -m pip install -r sentiment_analysis/requirements.txt
+streamlit run streamlit_app.py
+```
 
-🚀 Future Improvements
-- Integration of BERT/transformer-based models
-- Aspect-based sentiment analysis
-- Multi-language support
-- Active learning for dataset expansion
-- Ensemble methods for robustness
+## Train models
 
+The repository includes a small built-in sample for a basic pipeline smoke test:
+
+```bash
+python -m sentiment_analysis.train --dataset twitter --no-lstm
+```
+
+For a real experiment, supply a local CSV, ZIP, or Excel dataset using `--data-path`. Supported dataset schemas are described in `src/data_loader.py`. Dataset files and generated model artifacts are excluded from Git; do not add private or licensed data unless you have permission to publish it.
+
+```bash
+python -m sentiment_analysis.train --dataset amazon --data-path data/amazon_reviews.csv --no-lstm
+```
+
+## Repository map
+
+```text
+notebooks/                 exploratory analysis and model training
+sentiment_analysis/        configuration, training, and prediction code
+src/                       preprocessing, feature extraction, and models
+streamlit_app.py           Streamlit dashboard
+sentiment_analysis/models/ training report; generated model files are local
+```
+
+## Scope
+
+This is a learning project. Results depend on the dataset, class balance, preprocessing, and evaluation setup. Review the training data and model metrics before using the classifier outside a demonstration.

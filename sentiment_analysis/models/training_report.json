@@ -1,6 +1,6 @@
 {
   "dataset": "amazon",
-  "data_path": "C:\\Users\\kotap\\Downloads\\sentiment analysis dataset.zip",
+  "data_path": null,
   "feature_method": "tfidf",
   "samples": 1176,
   "best_model": "svm",
