@@ -4,6 +4,10 @@ A Python project for classifying short text as positive, neutral, or negative. I
 
 [Watch the dashboard demo](https://youtu.be/Zb4HXzh-gXI)
 
+![Dashboard: model choice and review input](docs/images/dashboard-input.png)
+
+![Dashboard: sentiment distribution and per-review predictions](docs/images/dashboard-results.png)
+
 ## What the project includes
 
 - Text preprocessing and feature extraction, including TF-IDF
@@ -41,11 +45,11 @@ python -m sentiment_analysis.train --dataset amazon --data-path data/amazon_revi
 ## Repository map
 
 ```text
-notebooks/                 exploratory analysis and model training
 sentiment_analysis/        configuration, training, and prediction code
 src/                       preprocessing, feature extraction, and models
 streamlit_app.py           Streamlit dashboard
 sentiment_analysis/models/ training report; generated model files are local
+docs/images/               dashboard screenshots
 ```
 
 ## Scope
